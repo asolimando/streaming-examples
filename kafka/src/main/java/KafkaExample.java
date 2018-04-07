@@ -16,7 +16,7 @@ import org.apache.kafka.streams.kstream.KTable;
 
 import java.util.Properties;
 
-public class Example {
+public class KafkaExample {
   public static void main(String[] args) {
     KStreamBuilder builder = new KStreamBuilder();
 

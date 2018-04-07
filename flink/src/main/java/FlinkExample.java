@@ -16,7 +16,7 @@ import org.apache.flink.streaming.util.serialization.KeyedSerializationSchema;
 import java.util.Properties;
 
 
-public class Example {
+public class FlinkExample {
 
   public static class AverageAccumulator {
     String key;

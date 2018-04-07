@@ -2,7 +2,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{LongType, StructField, StructType}
 
-object Example {
+object SparkExample {
   def main(args: Array[String]) {
     val spark = SparkSession
       .builder()
