@@ -22,7 +22,7 @@ dependencies {
 jar {
     from configurations.releaseJars.collect { it.isDirectory() ? it : zipTree(it) }
     manifest {
-        attributes 'Main-Class': 'Example'
+        attributes 'Main-Class': 'FlinkExample'
     }
 }
 

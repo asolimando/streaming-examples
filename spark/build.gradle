@@ -18,6 +18,6 @@ dependencies {
 
 jar {
     manifest {
-        attributes 'Main-Class': 'Example'
+        attributes 'Main-Class': 'SparkExample'
     }
 }

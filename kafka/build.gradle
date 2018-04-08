@@ -1,7 +1,7 @@
 group 'name.jolif'
 version '1.0-SNAPSHOT'
 
-apply plugin: 'java'
+apply plugin: 'scala'
 
 sourceCompatibility = 1.8
 
@@ -9,16 +9,20 @@ repositories {
     mavenCentral()
 }
 
+sourceSets.main.scala.srcDir "src/main/java"
+sourceSets.main.java.srcDirs = []
+
 dependencies {
     compile 'org.apache.kafka:kafka-clients:0.10.2.1'
     compile 'org.apache.kafka:kafka-streams:0.10.2.1'
     compile 'org.apache.kafka:connect-api:0.10.2.1'
+    compile group: 'joda-time', name: 'joda-time', version: '2.9.9'
 }
 
 jar {
     from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
     manifest {
-        attributes 'Main-Class': 'Example'
+        attributes 'Main-Class': 'KakfaExample'
     }
 }
 
