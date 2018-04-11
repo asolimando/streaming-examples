@@ -55,8 +55,13 @@ public class KafkaExample {
     @Override public byte[] serialize(final String topic, final VehicleDetectionMessage data) {
       if (data == null) return null;
 
-      return (data.plate + SEPARATOR + data.gate + SEPARATOR + data.lane + SEPARATOR + data.ts +
-          SEPARATOR + data.nation).getBytes();
+      return (
+          data.plate + SEPARATOR +
+          data.gate + SEPARATOR +
+          data.lane + SEPARATOR +
+          data.ts + SEPARATOR +
+          data.nation
+      ).getBytes();
     }
 
     @Override public void close() { }
@@ -70,7 +75,7 @@ public class KafkaExample {
       final VehicleDetectionMessage msg = new VehicleDetectionMessage();
       final String[] elems = new String(data).split(SEPARATOR);
 
-      System.out.println(Arrays.toString(elems));
+//      System.out.println(Arrays.toString(elems));
 
       msg.plate = elems[0];
       msg.gate = Integer.parseInt(elems[1]);
@@ -78,7 +83,7 @@ public class KafkaExample {
       msg.ts = elems[3];
       msg.nation = elems[4];
 
-      System.out.println(msg);
+//      System.out.println(msg);
 
       return msg;
     }
@@ -147,13 +152,19 @@ public class KafkaExample {
   }
 
   public static void main(String[] args) {
-    // Create an instance of StreamsConfig from the Properties instance
-    StreamsConfig config = new StreamsConfig(getProperties());
-    final Serde <String> stringSerde = Serdes.String();
-    final Serde <Long> longSerde = Serdes.Long();
 
-    // define countryMessageSerde
-    Map<String, Object> serdeProps = new HashMap<>();
+    // Create an instance of StreamsConfig from the Properties instance
+    final Properties streamingConfig = getProperties();
+
+
+    /****** SERDE START ******/
+
+    // key serde
+    final Serde <String> stringSerde = Serdes.String();
+
+    // value serde
+    final Map<String, Object> serdeProps = new HashMap<>();
+
     final Serializer<VehicleDetectionMessage> vehicleMsgSerializer = new CSVSerializer();
     serdeProps.put("CSVLineClass", VehicleDetectionMessage.class);
     vehicleMsgSerializer.configure(serdeProps, false);
@@ -161,37 +172,31 @@ public class KafkaExample {
     final Deserializer<VehicleDetectionMessage> vehicleMsgDeserializer = new CSVDeserializer();
     serdeProps.put("CSVLineClass", VehicleDetectionMessage.class);
     vehicleMsgDeserializer.configure(serdeProps, false);
-    final Serde<VehicleDetectionMessage> countryMessageSerde = Serdes.serdeFrom(vehicleMsgSerializer, vehicleMsgDeserializer);
 
-    KStreamBuilder builder = new KStreamBuilder();
-
-/*
-    Deserializer<String> deserializer = new StringDeserializer();
-    Serializer<String> serializer = new StringSerializer();
-
-    final Serde<String> serde = Serdes.serdeFrom(serializer, deserializer);
-*/
     final Serde<VehicleDetectionMessage> serde = Serdes.serdeFrom(vehicleMsgSerializer, vehicleMsgDeserializer);
 
-    final Serde<Map<String, Long>> serdeResMap =
-        Serdes.serdeFrom(new MapSerializer<String, Long>(), new MapDeserializer<String, Long>());
+    // result serde
+    final Serde<Map<String, Long>> serdeResMap = Serdes.serdeFrom(new MapSerializer<>(), new MapDeserializer<>());
 
-    final Properties streamingConfig = getProperties();
+    /****** SERDE END ******/
 
-    KStream<String, VehicleDetectionMessage> stream = builder.stream(Serdes.String(), serde, "origin");
+    // stream handling
+    final KStreamBuilder builder = new KStreamBuilder();
 
-    final KStream<String, VehicleDetectionMessage> keepKnownNationality = stream
-        .filterNot((k, v) -> (v.nation.equals("?")));
+    final KStream<String, VehicleDetectionMessage> stream = builder.stream(Serdes.String(), serde, "origin");
+
+    final KStream<String, VehicleDetectionMessage> keepKnownNationality =
+        stream.filterNot((k, v) -> (v.nation.equals("?")));
 
     final KGroupedStream<String, VehicleDetectionMessage> group =
-        keepKnownNationality.groupByKey(stringSerde, serde);
+        keepKnownNationality.groupBy((k, v) -> v.nation, stringSerde, serde);
 
     final KTable<String, Map<String, Long>> countNat = group.aggregate(
-            () -> new HashMap<String, Long>(),
+            () -> new HashMap<>(),
             (String key, VehicleDetectionMessage value, Map<String, Long> aggregate) -> {
-              aggregate.putIfAbsent(
+              aggregate.put(
                   value.nation,
-                  aggregate.getOrDefault(value.nation,new Long(0L)) + 1L
+                  aggregate.getOrDefault(value.nation, new Long(0L)) + 1L
               );
               return aggregate;
             },

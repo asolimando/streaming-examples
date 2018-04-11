@@ -25,24 +25,27 @@ object ScalaKafkaProducer extends App with ProducerHelper {
   val bufferedSource = scala.io.Source.fromFile(CSV_PATH)
   val sourceIterator = bufferedSource.getLines
 
+  val KEY_INDEX = 0
+  val TIMESTAMP_INDEX = 3
+
   // skip header
   sourceIterator.next
 
   // send the first event immediately, from then "respect" intra-events time
   val firstLine = sourceIterator.next
   val cols = firstLine.split(SEPARATOR).map(_.trim)
-  val record = new ProducerRecord(TOPIC, cols(0), firstLine)
+  val record = new ProducerRecord(TOPIC, cols(KEY_INDEX), firstLine)
 
   producer.send(record)
 
   var lastSendTimestamp = DateTime.now
-  var lastEventTimestamp = DATETIME_FORMATTER.parseDateTime(cols(3))
+  var lastEventTimestamp = DATETIME_FORMATTER.parseDateTime(cols(TIMESTAMP_INDEX))
 
   for (line <- sourceIterator) {
     val cols = line.split(SEPARATOR).map(_.trim)
-    val record = new ProducerRecord(TOPIC, cols(0), line)
+    val record = new ProducerRecord(TOPIC, cols(KEY_INDEX), line)
 
-    val actualEventTimestamp = DATETIME_FORMATTER.parseDateTime(cols(3))
+    val actualEventTimestamp = DATETIME_FORMATTER.parseDateTime(cols(TIMESTAMP_INDEX))
 
     val intraEventDuration = DateTimeUtils.getDurationMillis(
       new Duration(lastEventTimestamp, actualEventTimestamp)
