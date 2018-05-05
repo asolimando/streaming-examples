@@ -7,7 +7,7 @@ sleep 10
 ~/apps/$kafkadir/bin/kafka-server-start.sh ~/apps/$kafkadir/config/server.properties > kafka.log&
 sleep 10
 
-declare -a topics=( "origin" "flink-destination" "spark-destination" "kafka-destination" )
+declare -a topics=( "origin" "flink-destination" "spark-destination" "kafka-destination" "locations" )
 
 for i in "${topics[@]}"
 do

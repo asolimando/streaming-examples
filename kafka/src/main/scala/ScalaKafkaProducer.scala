@@ -12,16 +12,46 @@ trait ProducerHelper {
   props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
   props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
 
-  val TOPIC = "origin"
+  val TOPIC_RAWDATA = "origin"
   val CSV_PATH = "data/01.01.2016.csv"
 
   val SEPARATOR = ","
   val DATETIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
+
+  val TOPIC_LOC = "locations"
+
+  val locations = Seq(
+    "1,124.7",
+    "2,74.6",
+    "3,124.7",
+    "4,46.5",
+    "5,106.1",
+    "8,117.8",
+    "9,31.8",
+    "10,54.5",
+    "12,113.8",
+    "13,134.5",
+    "15,98.4",
+    "16,60.5",
+    "18,66.8",
+    "20,88.4",
+    "21,20.8",
+    "22,135.3",
+    "23,80.8",
+    "25,106.1",
+    "26,48.5",
+    "27,22.6",
+    "28,31.8"
+  )
 }
 
 object ScalaKafkaProducer extends App with ProducerHelper {
 
   val producer = new KafkaProducer[String, String](props)
+
+  // create the topic for locations
+  seqToTopic(locations, producer, TOPIC_LOC, 0)
+
   val bufferedSource = scala.io.Source.fromFile(CSV_PATH)
   val sourceIterator = bufferedSource.getLines
 
@@ -34,7 +64,7 @@ object ScalaKafkaProducer extends App with ProducerHelper {
   // send the first event immediately, from then "respect" intra-events time
   val firstLine = sourceIterator.next
   val cols = firstLine.split(SEPARATOR).map(_.trim)
-  val record = new ProducerRecord(TOPIC, cols(KEY_INDEX), firstLine)
+  val record = new ProducerRecord(TOPIC_RAWDATA, cols(KEY_INDEX), firstLine)
 
   producer.send(record)
 
@@ -43,7 +73,7 @@ object ScalaKafkaProducer extends App with ProducerHelper {
 
   for (line <- sourceIterator) {
     val cols = line.split(SEPARATOR).map(_.trim)
-    val record = new ProducerRecord(TOPIC, cols(KEY_INDEX), line)
+    val record = new ProducerRecord(TOPIC_RAWDATA, cols(KEY_INDEX), line)
 
     val actualEventTimestamp = DATETIME_FORMATTER.parseDateTime(cols(TIMESTAMP_INDEX))
 
@@ -72,4 +102,13 @@ object ScalaKafkaProducer extends App with ProducerHelper {
 
   bufferedSource.close
   producer.close
+
+  def seqToTopic(data: Seq[String],
+                 producer: KafkaProducer[String, String],
+                 topic: String,
+                 keyIdx: Int) =
+    data.map(_.split(SEPARATOR))
+        .map(l => (l(keyIdx), l.mkString(SEPARATOR)))
+        .map(e => new ProducerRecord(topic, e._1, e._2))
+        .foreach(producer.send)
 }
