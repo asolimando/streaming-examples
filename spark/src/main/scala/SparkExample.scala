@@ -76,10 +76,11 @@ object SparkExample {
         .zip(locProj.drop(1))
         .filterNot{case ((loc1, ts1), (loc2, ts2)) => ts2 == ts1}
 
-      locPairs
-        .map{case ((loc1, ts1), (loc2, ts2)) => (Math.abs(loc2 - loc1)) / (ts2/60/60 - ts1/60/60)} // speed in km/h
-        .filter(_ > 130)
-        .size
+      val res =
+        locPairs.map{case ((loc1, ts1), (loc2, ts2)) => (Math.abs(loc2 - loc1), (ts2 - ts1).toDouble / 60 / 24)} // speed in km/h
+
+      res.map(p => (p._1 / p._2))
+         .filter(_ > 60)//.size
     })
 
     df = df.select(
@@ -109,7 +110,7 @@ object SparkExample {
         countFinesUDF(col("info")) as "value",
         col("cnt")
       )
-      .filter(col("value") > 0)
+      .filter(size(col("value")) > 0)
 
     val ds = speed.writeStream
       .format("console")

@@ -11,11 +11,11 @@ trait ConsumerHelper {
   val props = new Properties()
   props.put("bootstrap.servers", "localhost:9092")
   props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
-  props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
-//  props.put("value.deserializer", classOf[KafkaExample.MapDeserializer[String, Long]])
+//  props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+  props.put("value.deserializer", classOf[KafkaExample.MapDeserializer[String, Long]])
   props.put("group.id", "mygroup")
 
-  val TOPIC = "locations"//"kafka-destination"
+  val TOPIC = "flink-destination"//"kafka-destination"
 }
 
 object ScalaKafkaConsumer extends App with ConsumerHelper {
