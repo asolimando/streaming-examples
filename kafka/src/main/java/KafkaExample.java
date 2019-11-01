@@ -304,14 +304,14 @@ public class KafkaExample {
         keepKnownNationality.groupBy((k, v) -> v.nation, stringSerde, vehicleSerde);
 
     final KTable<String, Map<String, Long>> countNat = group.aggregate(
-            () -> new HashMap<>(),
-            (String key, VehicleDetectionMessage value, Map<String, Long> aggregate) -> {
-              aggregate.put(
-                  value.nation,
-                  aggregate.getOrDefault(value.nation, new Long(0L)) + 1L
-              );
-              return aggregate;
-            },
+        HashMap::new,
+        (String key, VehicleDetectionMessage value, Map<String, Long> aggregate) -> {
+          aggregate.put(
+              value.nation,
+              aggregate.getOrDefault(value.nation, new Long(0L)) + 1L
+          );
+            return aggregate;
+          },
         serdeResMap, "countNat"
     );
 

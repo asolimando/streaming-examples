@@ -11,9 +11,9 @@ repositories {
 
 dependencies {
     compile 'org.scala-lang:scala-library:2.11.8'
-    compile 'org.apache.spark:spark-sql-kafka-0-10_2.11:2.3.0'
-    compile 'org.apache.spark:spark-core_2.11:2.3.0'
-    compile 'org.apache.spark:spark-sql_2.11:2.3.0'
+    compile 'org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.4'
+    compile 'org.apache.spark:spark-core_2.11:2.4.4'
+    compile 'org.apache.spark:spark-sql_2.11:2.4.4'
 }
 
 jar {

@@ -101,12 +101,12 @@ object ScalaKafkaProducer extends App with ProducerHelper {
   }
 
   bufferedSource.close
-  producer.close
+  producer.close()
 
   def seqToTopic(data: Seq[String],
                  producer: KafkaProducer[String, String],
                  topic: String,
-                 keyIdx: Int) =
+                 keyIdx: Int): Unit =
     data.map(_.split(SEPARATOR))
         .map(l => (l(keyIdx), l.mkString(SEPARATOR)))
         .map(e => new ProducerRecord(topic, e._1, e._2))

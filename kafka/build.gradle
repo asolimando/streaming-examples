@@ -13,6 +13,7 @@ sourceSets.main.scala.srcDir "src/main/java"
 sourceSets.main.java.srcDirs = []
 
 dependencies {
+    compile 'org.scala-lang:scala-library:2.11.8'
     compile 'org.apache.kafka:kafka-clients:0.11.0.0'
     compile 'org.apache.kafka:kafka-streams:0.11.0.0'
     compile 'org.apache.kafka:connect-api:0.11.0.0'

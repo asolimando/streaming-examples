@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-
 public class FlinkExample {
 
   private static final String SEPARATOR = ",";
@@ -80,7 +79,7 @@ public class FlinkExample {
       final Map<String, Long> bMap = b.plate2count;
 
       // we merge b elements into a, if existing, otherwise they are inserted
-      bMap.entrySet().stream().forEach(e -> aMap.merge(e.getKey(), e.getValue(), Long::sum));
+      bMap.forEach((key, value) -> aMap.merge(key, value, Long::sum));
 
       return a;
     }

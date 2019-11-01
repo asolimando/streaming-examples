@@ -1,11 +1,11 @@
-import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{Row, SparkSession}
 
 object SparkExample {
 
-  val locations = Seq(
+  val locations: Seq[String] = Seq(
     "1,124.7",
     "2,74.6",
     "3,124.7",
@@ -31,8 +31,7 @@ object SparkExample {
 
   def main(args: Array[String]) {
 
-    import org.apache.log4j.Logger
-    import org.apache.log4j.Level
+    import org.apache.log4j.{Level, Logger}
 
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
@@ -68,19 +67,15 @@ object SparkExample {
           col("loc") cast("double") as "loc"
         )
 
-    val countFinesUDF = udf((l: Seq[Row]) => {
-      val locProj = l.map{ case Row(gate:Int, loc:Double, ts:Long) => (loc, ts)}
+    val countNumSpeedingUDF = udf((l: Seq[Row]) => {
+      val locProj = l.view.map{case Row(_: Int, loc: Double, ts: Long) => (loc, ts)}
                      .sortBy(_._2)
 
-      val locPairs = locProj
-        .zip(locProj.drop(1))
-        .filterNot{case ((loc1, ts1), (loc2, ts2)) => ts2 == ts1}
-
-      val res =
-        locPairs.map{case ((loc1, ts1), (loc2, ts2)) => (Math.abs(loc2 - loc1), (ts2 - ts1).toDouble / 60 / 24)} // speed in km/h
-
-      res.map(p => (p._1 / p._2))
-         .filter(_ > 60)//.size
+      locProj.zip(locProj.drop(1))
+        .filterNot{case ((loc1, _), (loc2, _)) => loc1 == loc2} // avoid same location, if ever
+        .map{case ((loc1, ts1), (loc2, ts2)) => Math.abs(loc2 - loc1) / (ts2 - ts1).toDouble * 3600} // speed in km/h
+        .filter(_ > 130)
+        .toList
     })
 
     df = df.select(
@@ -103,18 +98,24 @@ object SparkExample {
     loc.printSchema()
 
     val speed = df.join(loc, df("gate") === loc("gate"))
-      .groupBy("plate")
+      .groupBy("plate", "nation")
       .agg(collect_list(struct(df("gate"), loc("loc"), df("ts")))  as "info", count(df("gate")) as "cnt")
       .select(
-        col("plate"),
-        countFinesUDF(col("info")) as "value",
+        col("nation"),
+        countNumSpeedingUDF(col("info")) as "speed_values",
         col("cnt")
       )
-      .filter(size(col("value")) > 0)
+      .filter(size(col("speed_values")) > 0)
+      .select(
+        col("nation"),
+        size(countNumSpeedingUDF(col("info"))) as "fines"
+      )
+      .groupBy("nation")
+      .agg(sum(col("fines")).as("tot_fines"))
 
     val ds = speed.writeStream
       .format("console")
-      .outputMode(OutputMode.Complete())
+      .outputMode(OutputMode.Update())
       .start()
 
     ds.awaitTermination()
