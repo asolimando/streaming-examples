@@ -1,8 +1,6 @@
+package flink;
+
 import org.apache.flink.api.common.functions.AggregateFunction;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -12,41 +10,20 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.triggers.ContinuousProcessingTimeTrigger;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer011;
-import org.apache.flink.streaming.util.serialization.KeyedSerializationSchema;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
+import flink.FlinkUtils.PlateCountingOutputFormat;
+import flink.FlinkUtils.ResultSerializer;
+import flink.FlinkUtils.VehicleDetection;
+import flink.FlinkUtils.VehicleDetectionSchema;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-public class FlinkExample {
-
-  private static final String SEPARATOR = ",";
-
-  static public class VehicleDetection {
-    public String plate;
-    public int gate;
-    public int lane;
-    public String ts;
-    public String nation;
-
-    public VehicleDetection(String message){
-      final String [] tokens = message.split(SEPARATOR);
-
-      this.plate = tokens[0];
-      this.gate = Integer.parseInt(tokens[1]);
-      this.lane = Integer.parseInt(tokens[2]);
-      this.ts = tokens[3];
-      this.nation = tokens[4];
-    }
-
-    @Override public String toString() {
-      return plate + " " + gate + " " + lane + " " + ts + " " + nation;
-    }
-  }
+/**
+ * Counting plate occurrences for the whole dataset
+ */
+public class FlinkExample2 {
 
   public static class PlateCountAccumulator {
     Map<String, Long> plate2count = new HashMap<>();
@@ -85,73 +62,6 @@ public class FlinkExample {
     }
   }
 
-  public static class ResultSerializer implements KeyedSerializationSchema<Map<String, Long>> {
-    @Override
-    public byte[] serializeKey(Map<String, Long> data) {
-      return "key".getBytes();
-    }
-
-    @Override
-    public byte[] serializeValue(Map<String, Long> data) {
-      if (data == null) return null;
-
-      final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-
-      try {
-        final ObjectOutput out = new ObjectOutputStream(bos);
-        out.writeObject(data);
-        out.flush();
-        return bos.toByteArray();
-      } catch (IOException ex) {
-        return null;
-      } finally {
-        try {
-          bos.close();
-        } catch (IOException e) {
-          return null;
-        }
-      }
-    }
-
-    @Override
-    public String getTargetTopic(Map<String, Long> data) {
-      // use always the default topic
-      return null;
-    }
-  }
-
-  public static class VehicleDetectionSchema implements DeserializationSchema<VehicleDetection>, SerializationSchema<VehicleDetection> {
-
-    @Override
-    public byte[] serialize(VehicleDetection data) {
-      if (data == null) return null;
-
-      return (
-          data.plate + SEPARATOR +
-              data.gate + SEPARATOR +
-              data.lane + SEPARATOR +
-              data.ts + SEPARATOR +
-              data.nation
-      ).getBytes();
-    }
-
-    @Override
-    public VehicleDetection deserialize(byte[] message) {
-      return new VehicleDetection(new String(message));
-    }
-
-    // not used here
-    @Override
-    public boolean isEndOfStream(VehicleDetection nextElement) {
-      return false;
-    }
-
-    @Override
-    public TypeInformation<VehicleDetection> getProducedType() {
-      return TypeExtractor.getForClass(VehicleDetection.class);
-    }
-  }
-
   public static void main(String[] args) throws Exception {
 
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -174,18 +84,20 @@ public class FlinkExample {
     DataStream<VehicleDetection> stream = env.addSource(kafkaConsumer);
 
     final SingleOutputStreamOperator<Map<String, Long>> process =
-            stream.keyBy(value -> value.plate)
+            stream.keyBy(value -> value.gate)// split stream "per-gate"
             .window(GlobalWindows.create())
-            // our trigger should probably be smarter
             .trigger(ContinuousProcessingTimeTrigger.of(Time.seconds(1)))
             .aggregate(new PlateCount());
-
-    FlinkKafkaProducer011 kafkaProducer = new FlinkKafkaProducer011<>(
+/*
+    FlinkKafkaProducer011<Map<String, Long>> kafkaProducer = new FlinkKafkaProducer011<>(
             "localhost:9092",
             "flink-destination",
             new ResultSerializer());
     process.addSink(kafkaProducer);
+*/
+    // just write to stdout
+    process.writeUsingOutputFormat(new PlateCountingOutputFormat());
 
-    env.execute("FlinkJob");
+    env.execute("FlinkJob2");
   }
 }
